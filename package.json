@@ -1,0 +1,56 @@
+{
+  "name": "peon-ping-copilot-hooks",
+  "displayName": "Peon Ping Copilot Hooks",
+  "description": "peon-ping style sound and notification hooks for GitHub Copilot in VS Code",
+  "version": "0.1.0",
+  "publisher": "peonping",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.95.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onCommand:peonPing.installHooks",
+    "onCommand:peonPing.removeHooks",
+    "onCommand:peonPing.openConfig",
+    "onCommand:peonPing.toggleEnabled",
+    "onCommand:peonPing.syncDefaultPack"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "peonPing.installHooks",
+        "title": "Peon Ping: Install Copilot Hooks"
+      },
+      {
+        "command": "peonPing.removeHooks",
+        "title": "Peon Ping: Remove Copilot Hooks"
+      },
+      {
+        "command": "peonPing.openConfig",
+        "title": "Peon Ping: Open Hook Config"
+      },
+      {
+        "command": "peonPing.toggleEnabled",
+        "title": "Peon Ping: Toggle Enabled"
+      },
+      {
+        "command": "peonPing.syncDefaultPack",
+        "title": "Peon Ping: Sync Default Audio Pack"
+      }
+    ]
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "vscode:prepublish": "npm run compile"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.0",
+    "@types/vscode": "^1.95.0",
+    "typescript": "^5.9.2"
+  }
+}
