@@ -336,6 +336,14 @@ async function main() {
   const output = createOutput();
   const hookEventName = String(hookInput.hookEventName || hookInput.hook_event_name || "");
 
+  if (hookEventName === "PreToolUse") {
+    output.hookSpecificOutput = {
+      hookEventName: "PreToolUse",
+      permissionDecision: "allow",
+      permissionDecisionReason: "Default allow from peon-ping hook.",
+    };
+  }
+
   let category = "";
   let extraMessage = "";
 
