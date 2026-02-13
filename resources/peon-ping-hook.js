@@ -13,6 +13,7 @@ const DEFAULT_CONFIG = {
   activePack: "peon",
   packsDir: "./packs",
   volume: 0.5,
+  startupAcknowledgeGraceSeconds: 4,
   spamThreshold: 3,
   spamWindowSeconds: 10,
   categories: {
@@ -89,6 +90,15 @@ function runDetached(command, args) {
   }
 }
 
+function runSync(command, args) {
+  try {
+    const result = cp.spawnSync(command, args, { stdio: "ignore" });
+    return result.status === 0;
+  } catch {
+    return false;
+  }
+}
+
 function commandExists(command) {
   try {
     const checkCommand = process.platform === "win32" ? "where" : "which";
@@ -123,13 +133,26 @@ function escapeAppleScript(value) {
 
 function sendDesktopNotification(title, message) {
   if (process.platform === "darwin") {
+    if (commandExists("terminal-notifier")) {
+      const success = runSync("terminal-notifier", ["-title", title, "-message", message, "-group", "peon-ping"]);
+      if (success) {
+        return;
+      }
+    }
+
     const command = `display notification "${escapeAppleScript(message)}" with title "${escapeAppleScript(title)}"`;
-    runDetached("osascript", ["-e", command]);
+    const success = runSync("osascript", ["-e", command]);
+    if (!success) {
+      runDetached("osascript", ["-e", command]);
+    }
     return;
   }
 
   if (process.platform === "linux") {
-    runDetached("notify-send", [title, message]);
+    const success = runSync("notify-send", [title, message]);
+    if (!success) {
+      runDetached("notify-send", [title, message]);
+    }
     return;
   }
 
@@ -327,11 +350,15 @@ async function main() {
     lastPlayedLabel: {},
     lastPlayedFile: {},
     promptTimestamps: [],
+    lastSessionStartTimestamp: 0,
+    lastSessionId: "",
   });
 
   state.lastPlayedLabel = state.lastPlayedLabel || {};
   state.lastPlayedFile = state.lastPlayedFile || {};
   state.promptTimestamps = state.promptTimestamps || [];
+  state.lastSessionStartTimestamp = Number(state.lastSessionStartTimestamp || 0);
+  state.lastSessionId = String(state.lastSessionId || "");
 
   const output = createOutput();
   const hookEventName = String(hookInput.hookEventName || hookInput.hook_event_name || "");
@@ -350,11 +377,26 @@ async function main() {
 
   let category = "";
   let extraMessage = "";
+  const sessionId = String(hookInput.sessionId || "");
+  const nowSeconds = Date.now() / 1000;
 
   if (hookEventName === "SessionStart") {
     category = "session.start";
+    state.lastSessionStartTimestamp = nowSeconds;
+    state.lastSessionId = sessionId;
   } else if (hookEventName === "UserPromptSubmit") {
-    category = checkSpam(state, config) ? "user.spam" : "task.acknowledge";
+    const isSpam = checkSpam(state, config);
+    const grace = Number(config.startupAcknowledgeGraceSeconds ?? 4);
+    const withinStartupGrace =
+      !isSpam &&
+      grace > 0 &&
+      state.lastSessionStartTimestamp > 0 &&
+      (state.lastSessionId === "" || state.lastSessionId === sessionId || sessionId === "") &&
+      (nowSeconds - state.lastSessionStartTimestamp) <= grace;
+
+    if (!withinStartupGrace) {
+      category = isSpam ? "user.spam" : "task.acknowledge";
+    }
   } else if (hookEventName === "Stop") {
     category = "task.complete";
   } else if (hookEventName === "SubagentStart") {

@@ -174,6 +174,7 @@ function buildDefaultConfig(): string {
     activePack: DEFAULT_PACK,
     packsDir: "./packs",
     volume: 0.5,
+    startupAcknowledgeGraceSeconds: 4,
     spamThreshold: 3,
     spamWindowSeconds: 10,
     categories: {
