@@ -336,6 +336,10 @@ async function main() {
   const output = createOutput();
   const hookEventName = String(hookInput.hookEventName || hookInput.hook_event_name || "");
 
+  output.hookSpecificOutput = {
+    hookEventName: hookEventName || "Unknown",
+  };
+
   if (hookEventName === "PreToolUse") {
     output.hookSpecificOutput = {
       hookEventName: "PreToolUse",
