@@ -16,11 +16,13 @@ What this implements
 Commands
 --------
 
-*   `Peon Ping: Install Copilot Hooks`
-*   `Peon Ping: Remove Copilot Hooks`
-*   `Peon Ping: Open Hook Config`
-*   `Peon Ping: Toggle Enabled`
-*   `Peon Ping: Sync Default Audio Pack`
+*   `Peon Ping: Install Copilot Hooks` - Set up hooks and download the default peon pack
+*   `Peon Ping: Remove Copilot Hooks` - Remove hook files (preserves config and packs)
+*   `Peon Ping: Open Hook Config` - Edit configuration settings
+*   `Peon Ping: Toggle Enabled` - Quickly enable/disable sounds
+*   `Peon Ping: Sync Default Audio Pack` - Re-download the peon pack
+*   `Peon Ping: Download & Activate Sound Pack` - Browse and download any the available packs from the upstream peon-ping registry
+*   `Peon Ping: Switch Active Pack` - Switch between your installed packs
 
 Installed files
 ---------------
