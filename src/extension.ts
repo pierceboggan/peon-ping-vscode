@@ -16,6 +16,11 @@ type RegistryPack = {
   source_repo: string;
   source_ref: string;
   source_path: string;
+  display_name?: string;
+  categories?: string[];
+  language?: string;
+  description?: string;
+  sound_count?: number;
 };
 
 type RegistryResponse = {
@@ -224,7 +229,159 @@ async function syncDefaultPack(workspaceRoot: string): Promise<void> {
     },
   );
 }
+async function listInstalledPacks(workspaceRoot: string): Promise<string[]> {
+  const packsDir = path.join(workspaceRoot, HOOKS_DIR, PACKS_DIR);
+  try {
+    const entries = await fs.readdir(packsDir, { withFileTypes: true });
+    return entries.filter((entry) => entry.isDirectory()).map((entry) => entry.name);
+  } catch {
+    return [];
+  }
+}
 
+async function syncAnyPack(extensionPath: string, packName?: string): Promise<void> {
+  const workspaceRoot = getWorkspaceRoot();
+  if (!workspaceRoot) {
+    void vscode.window.showErrorMessage("Open a workspace folder before syncing packs.");
+    return;
+  }
+
+  const hooksDir = path.join(workspaceRoot, HOOKS_DIR);
+  if (!(await fileExists(path.join(hooksDir, SCRIPT_FILE)))) {
+    await installHooks(extensionPath);
+    return;
+  }
+
+  let selectedPack = packName;
+  let packDisplayName = packName;
+
+  if (!selectedPack) {
+    try {
+      const registry = await fetchJson<RegistryResponse>(REGISTRY_URL);
+      const packs = Array.isArray(registry.packs) ? registry.packs : [];
+      
+      // Sort packs by display name
+      const sortedPacks = packs.sort((a, b) => {
+        const nameA = a.display_name || a.name;
+        const nameB = b.display_name || b.name;
+        return nameA.localeCompare(nameB);
+      });
+
+      const packItems = sortedPacks.map((pack) => ({
+        label: pack.display_name || pack.name,
+        description: `${pack.sound_count || pack.categories?.length || 0} sounds · ${pack.language || "en"}`,
+        detail: pack.description || pack.name,
+        packName: pack.name,
+      }));
+
+      const selected = await vscode.window.showQuickPick(packItems, {
+        placeHolder: "Select a sound pack to download and activate",
+        matchOnDescription: true,
+        matchOnDetail: true,
+      });
+
+      if (!selected) {
+        return;
+      }
+
+      selectedPack = selected.packName;
+      packDisplayName = selected.label;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Unknown error";
+      void vscode.window.showErrorMessage(`Failed to fetch pack registry: ${message}`);
+      return;
+    }
+  }
+
+  try {
+    await vscode.window.withProgress(
+      {
+        location: vscode.ProgressLocation.Notification,
+        title: `Peon Ping: Downloading "${packDisplayName || selectedPack}"`,
+        cancellable: false,
+      },
+      async (progress) => {
+        progress.report({ message: "Downloading registry and manifest" });
+        const result = await syncPack(hooksDir, selectedPack!);
+        progress.report({ message: `Downloaded ${result.count} audio files` });
+      },
+    );
+
+    // Update config to use the new pack
+    const configPath = path.join(workspaceRoot, HOOKS_DIR, CONFIG_FILE);
+    let config: Record<string, unknown> = {};
+    try {
+      const raw = await fs.readFile(configPath, "utf8");
+      config = JSON.parse(raw) as Record<string, unknown>;
+    } catch {
+      config = {};
+    }
+
+    config.activePack = selectedPack;
+    await fs.writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
+
+    void vscode.window.showInformationMessage(
+      `Peon Ping: Downloaded and activated "${packDisplayName || selectedPack}" pack!`
+    );
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Unknown error";
+    void vscode.window.showErrorMessage(`Failed to sync pack: ${message}`);
+  }
+}
+
+async function switchActivePack(extensionPath: string): Promise<void> {
+  const workspaceRoot = getWorkspaceRoot();
+  if (!workspaceRoot) {
+    void vscode.window.showErrorMessage("Open a workspace folder before switching packs.");
+    return;
+  }
+
+  const configPath = path.join(workspaceRoot, HOOKS_DIR, CONFIG_FILE);
+  if (!(await fileExists(configPath))) {
+    await installHooks(extensionPath);
+    return;
+  }
+
+  const installedPacks = await listInstalledPacks(workspaceRoot);
+  if (installedPacks.length === 0) {
+    const sync = "Download Packs";
+    const result = await vscode.window.showWarningMessage(
+      "No sound packs installed yet.",
+      sync,
+    );
+    if (result === sync) {
+      await syncAnyPack(extensionPath);
+    }
+    return;
+  }
+
+  let config: Record<string, unknown> = {};
+  try {
+    const raw = await fs.readFile(configPath, "utf8");
+    config = JSON.parse(raw) as Record<string, unknown>;
+  } catch {
+    config = {};
+  }
+
+  const currentPack = typeof config.activePack === "string" ? config.activePack : DEFAULT_PACK;
+  
+  const packItems = installedPacks.map((pack) => ({
+    label: pack,
+    description: pack === currentPack ? "(currently active)" : "",
+  }));
+
+  const selected = await vscode.window.showQuickPick(packItems, {
+    placeHolder: "Select a sound pack to activate",
+  });
+
+  if (!selected || selected.label === currentPack) {
+    return;
+  }
+
+  config.activePack = selected.label;
+  await fs.writeFile(configPath, `${JSON.stringify(config, null, 2)}\n`, "utf8");
+  void vscode.window.showInformationMessage(`Peon Ping: Switched to "${selected.label}" pack.`);
+}
 async function installHooks(extensionPath: string): Promise<void> {
   const workspaceRoot = getWorkspaceRoot();
   if (!workspaceRoot) {
@@ -390,6 +547,18 @@ export function activate(context: vscode.ExtensionContext): void {
   context.subscriptions.push(
     vscode.commands.registerCommand("peonPing.syncDefaultPack", () => {
       void handleSyncDefaultPack(extensionPath);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("peonPing.downloadPack", () => {
+      void syncAnyPack(extensionPath);
+    }),
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand("peonPing.switchPack", () => {
+      void switchActivePack(extensionPath);
     }),
   );
 }
