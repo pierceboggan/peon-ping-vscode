@@ -16,7 +16,9 @@
     "onCommand:peonPing.removeHooks",
     "onCommand:peonPing.openConfig",
     "onCommand:peonPing.toggleEnabled",
-    "onCommand:peonPing.syncDefaultPack"
+    "onCommand:peonPing.syncDefaultPack",
+    "onCommand:peonPing.downloadPack",
+    "onCommand:peonPing.switchPack"
   ],
   "main": "./out/extension.js",
   "contributes": {
@@ -40,6 +42,14 @@
       {
         "command": "peonPing.syncDefaultPack",
         "title": "Peon Ping: Sync Default Audio Pack"
+      },
+      {
+        "command": "peonPing.downloadPack",
+        "title": "Peon Ping: Download & Activate Sound Pack"
+      },
+      {
+        "command": "peonPing.switchPack",
+        "title": "Peon Ping: Switch Active Pack"
       }
     ]
   },
