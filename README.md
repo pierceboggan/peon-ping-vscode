@@ -1,53 +1,56 @@
-Peon Ping Copilot Hooks (VS Code Extension)
-===========================================
+# Peon Ping Copilot Hooks
 
-`peon-ping` style notifications for GitHub Copilot agent sessions in VS Code using the new hooks integration.
+Peon-ping style sound and desktop notification hooks for GitHub Copilot agent sessions in VS Code.
 
-What this implements
---------------------
+## Features
 
-*   Installs workspace hook files in `.github/hooks/`
-*   Downloads the real `peon` sound pack from the PeonPing registry into `.github/hooks/packs/`
-*   Maps Copilot hook events to peon-ping style categories
-*   Plays real pack audio files (plus optional bell fallback) and desktop notifications
-*   Tracks prompt spam and avoids repeating the same line back-to-back
-*   Adds a basic `PreToolUse` safety check that sets `permissionDecision: "ask"` for potentially destructive tool input
+- Installs workspace hook files into `.github/hooks/`
+- Downloads the `peon` sound pack from the PeonPing registry into `.github/hooks/packs/`
+- Maps Copilot lifecycle events to peon-ping audio categories
+- Plays audio files from the pack (with an optional terminal bell fallback) and sends desktop notifications
+- Tracks prompt submissions to detect and de-duplicate rapid re-sends
+- Adds a `PreToolUse` safety check that prompts for confirmation before potentially destructive operations
 
-Commands
---------
+## Commands
 
-*   `Peon Ping: Install Copilot Hooks`
-*   `Peon Ping: Remove Copilot Hooks`
-*   `Peon Ping: Open Hook Config`
-*   `Peon Ping: Toggle Enabled`
-*   `Peon Ping: Sync Default Audio Pack`
+| Command | Description |
+|---|---|
+| `Peon Ping: Install Copilot Hooks` | Install hook files into the current workspace |
+| `Peon Ping: Remove Copilot Hooks` | Remove all installed hook files |
+| `Peon Ping: Open Hook Config` | Open the editable hook configuration file |
+| `Peon Ping: Toggle Enabled` | Enable or disable hooks without removing them |
+| `Peon Ping: Sync Default Audio Pack` | Re-download the default peon audio pack from the registry |
 
-Installed files
----------------
+## Installed files
 
-*   `.github/hooks/peon-ping.json` (hook registration)
-*   `.github/hooks/peon-ping-hook.js` (runtime hook script)
-*   `.github/hooks/peon-ping.config.json` (editable config)
-*   `.github/hooks/packs/peon/*` (real audio files + manifest)
+| File | Purpose |
+|---|---|
+| `.github/hooks/peon-ping.json` | Hook registration manifest |
+| `.github/hooks/peon-ping-hook.js` | Runtime hook script |
+| `.github/hooks/peon-ping.config.json` | Editable configuration |
+| `.github/hooks/packs/peon/*` | Audio files and pack manifest |
 
-Event mapping
--------------
+## Event mapping
 
-*   `SessionStart` → `session.start`
-*   `UserPromptSubmit` → `task.acknowledge` (or `user.spam`)
-*   `Stop` / `SubagentStop` → `task.complete`
-*   `SubagentStart` → `task.acknowledge`
-*   `PostToolUse` error-like output → `task.error`
-*   `PostToolUse` rate-limit-like output → `resource.limit`
-*   `PreToolUse` destructive patterns → `input.required` + `permissionDecision: ask`
+| Copilot event | Audio category |
+|---|---|
+| `SessionStart` | `session.start` |
+| `UserPromptSubmit` | `task.acknowledge` (or `user.spam` on repeated prompts) |
+| `Stop` / `SubagentStop` | `task.complete` |
+| `SubagentStart` | `task.acknowledge` |
+| `PostToolUse` (error output) | `task.error` |
+| `PostToolUse` (rate-limit output) | `resource.limit` |
+| `PreToolUse` (destructive patterns) | `input.required` + `permissionDecision: ask` |
 
-Development
------------
+## Development
 
-```
+```bash
 npm install
 npm run compile
-
 ```
 
 Press `F5` in VS Code to launch an Extension Development Host.
+
+## License
+
+MIT
